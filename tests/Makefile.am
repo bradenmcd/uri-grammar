@@ -1,11 +1,11 @@
 AM_CPPFLAGS = -I$(top_srcdir)/src
 TESTS_ENVIRONMENT = BOOST_TEST_REPORT_LEVEL=detailed
-TESTS = testsuite
+TESTS = uri-testsuite
 
-check_PROGRAMS = testsuite parse-uri
+check_PROGRAMS = uri-testsuite parse-uri
 
-testsuite_SOURCES = testsuite.cpp
-testsuite_LDFLAGS = -lboost_unit_test_framework
+uri_testsuite_SOURCES = uri_testsuite.cpp
+uri_testsuite_LDFLAGS = -lboost_unit_test_framework
 
 parse_uri_SOURCES = parse_uri.cpp
 parse_uri_LDFLAGS = -lboost_program_options
