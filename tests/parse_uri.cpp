@@ -109,7 +109,7 @@ try {
                           vm.count("fragment"));
 
     const string uri = argv[parsed.options.size()];
-    uri::grammar<print_actions> g(actions);
+    uri::uri_grammar<print_actions> g(actions);
     if (!parse(uri.begin(), uri.end(), g, space_p).full) {
         return EXIT_FAILURE;
     }
