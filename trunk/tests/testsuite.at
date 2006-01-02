@@ -3,6 +3,7 @@ AT_INIT
 AT_BANNER([Test URI parser])
 
 AT_SETUP([Get the scheme])
-AT_CHECK([parse-uri --scheme http://example.com], [0], [http
+AT_CHECK([parse-uri --scheme http://user@example.com:80/foo/bar?attr=val#frag],
+         [0], [http
 ])
 AT_CLEANUP
