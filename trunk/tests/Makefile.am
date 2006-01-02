@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(top_srcdir)/src
+AM_CPPFLAGS = -I$(top_srcdir)/src -DBOOST_SPIRIT_THREADSAFE
 TESTS_ENVIRONMENT = BOOST_TEST_REPORT_LEVEL=detailed
 TESTS = uri-testsuite
 
@@ -8,7 +8,7 @@ uri_testsuite_SOURCES = uri_testsuite.cpp
 uri_testsuite_LDFLAGS = -lboost_unit_test_framework
 
 parse_uri_SOURCES = parse_uri.cpp
-parse_uri_LDFLAGS = -lboost_program_options
+parse_uri_LDFLAGS = -lboost_program_options -lboost_thread
 
 EXTRA_DIST = \
         package.m4 \
