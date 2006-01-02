@@ -346,8 +346,7 @@ definition(const grammar & self)
         ;
 
     ipv4address
-        =   +digit_p >> '.' >> +digit_p >> '.' >> +digit_p >> '.'
-                     >> +digit_p
+        =   +digit_p >> '.' >> +digit_p >> '.' >> +digit_p >> '.' >> +digit_p
         ;
 
     port
