@@ -142,7 +142,7 @@ namespace uri {
 
             rule_type uric, escaped;
 
-            definition(const uric_grammar & self)
+            explicit definition(const uric_grammar & self)
             {
                 using namespace boost::spirit;
 
