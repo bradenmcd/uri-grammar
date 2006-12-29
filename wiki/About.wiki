@@ -2,8 +2,15 @@
 
 = Introduction =
 
-I wrote `uri_grammar` both to get myself acquainted with [http://spirit.sourceforge.net Spirit] and to parse URIs in [http://openvrml.org OpenVRML].
+I wrote `uri_grammar` both to get myself acquainted with [http://spirit.sourceforge.net Spirit] and to parse URIs in [http://openvrml.org OpenVRML]. `uri_grammar` is fairly small and it parses something that is pretty common; as such, it is probably generally useful for demonstrating some of what Spirit can do.
 
+= A tour of uri_grammar's design =
+
+Spirit has a lot of flexibility. A side effect of that is that the options for designing a grammar can be overwhelming to persons first getting acquainted with Spirit. Hopefully this will help a bit.
+
+== Factoring the grammar ==
+
+Spirit grammars are arguably most attractive aesthetically when they look most like BNF. That typically means in a monolithic [http://spirit.sourceforge.net/distrib/spirit_1_8_3/libs/spirit/doc/grammar.html grammar capsule]. There are, however, reasons of performance and usability that make this an unattractive design strategy in general. In `uri_grammar`'s case, factoring the grammar into separately usable parts was desirable so that users could parse either all kinds of URIs or exclusively absolute URIs.
 
 = Details =
 
@@ -11,5 +18,9 @@ Add your content here.  Format your content with:
   * Text in *bold* or _italic_
   * Headings, paragraphs, and lists
   * Automatic links to other wiki pages
+
+
+
+
 
 
