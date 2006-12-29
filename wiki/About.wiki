@@ -10,14 +10,110 @@ Spirit has a lot of flexibility. A side effect of that is that the options for d
 
 == Factoring the grammar ==
 
-Spirit grammars are arguably most attractive aesthetically when they look most like BNF. That typically means in a monolithic [http://spirit.sourceforge.net/distrib/spirit_1_8_3/libs/spirit/doc/grammar.html grammar capsule]. There are, however, reasons of performance and usability that make this an unattractive design strategy in general. In `uri_grammar`'s case, factoring the grammar into separately usable parts was desirable so that users could parse either all kinds of URIs or exclusively absolute URIs.
+Spirit grammars are arguably most attractive aesthetically when they look most like BNF. That typically means in a monolithic [http://spirit.sourceforge.net/distrib/spirit_1_8_3/libs/spirit/doc/grammar.html grammar capsule]. There are, however, reasons of performance and usability that make this an unattractive design strategy in general.
 
-= Details =
+In `uri_grammar`'s case, factoring the grammar into separately usable parts was desirable so that users could parse either all kinds of URIs or exclusively absolute URIs. As such, we find the main grammar capsule, `uri_grammar`, using another grammar capsule for parsing absolute URIs, `absolute_uri_grammar`:
 
-Add your content here.  Format your content with:
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+{{{
+    template <typename Actions = null_actions>
+    struct uri_grammar : public boost::spirit::grammar<uri_grammar<Actions> > {
+
+        template <typename ScannerT>
+        struct definition {
+            typedef boost::spirit::rule<ScannerT> rule_type;
+
+            rule_type uri_reference;
+            absolute_uri_grammar<Actions> absolute_uri;
+            rule_type relative_uri;
+            rule_type net_path;
+            uri_abs_path_grammar<Actions> abs_path;
+            rule_type rel_path;
+            rule_type rel_segment;
+            uri_authority_grammar<Actions> authority;
+            rule_type query;
+            rule_type fragment;
+            uric_grammar uric;
+            rule_type escaped;
+
+            explicit definition(const uri_grammar & self):
+                absolute_uri(self.actions),
+                abs_path(self.actions),
+                authority(self.actions)
+            {
+                using namespace boost::spirit;
+                using namespace phoenix;
+
+                BOOST_SPIRIT_DEBUG_NODE(uri_reference);
+                BOOST_SPIRIT_DEBUG_NODE(absolute_uri);
+                BOOST_SPIRIT_DEBUG_NODE(net_path);
+                BOOST_SPIRIT_DEBUG_NODE(abs_path);
+                BOOST_SPIRIT_DEBUG_NODE(rel_path);
+                BOOST_SPIRIT_DEBUG_NODE(rel_segment);
+                BOOST_SPIRIT_DEBUG_NODE(authority);
+                BOOST_SPIRIT_DEBUG_NODE(query);
+                BOOST_SPIRIT_DEBUG_NODE(fragment);
+                BOOST_SPIRIT_DEBUG_NODE(uric);
+                BOOST_SPIRIT_DEBUG_NODE(escaped);
+
+                uri_reference
+                    =   !(absolute_uri | relative_uri) >> !('#' >> fragment)
+                    ;
+
+                relative_uri
+                    =   (net_path | abs_path | rel_path) >> !('?' >> query)
+                    ;
+
+                net_path
+                    =   "//" >> authority >> !abs_path
+                    ;
+
+                rel_path
+                    =   (rel_segment >> !abs_path)[ self.actions.path ]
+                    ;
+
+                rel_segment
+                    =  +(   uri_unreserved_p
+                        |   escaped
+                        |   ';'
+                        |   '@'
+                        |   '&'
+                        |   '='
+                        |   '+'
+                        |   '$'
+                        |   ','
+                        )
+                    ;
+
+                query
+                    =   (*uric)[ self.actions.query ]
+                    ;
+
+                fragment
+                    =   (*uric)[ self.actions.fragment ]
+                    ;
+
+                escaped
+                    =   '%' >> xdigit_p >> xdigit_p
+                    ;
+            }
+
+            const boost::spirit::rule<ScannerT> & start() const
+            {
+                return this->uri_reference;
+            }
+        };
+
+        const Actions & actions;
+
+        explicit uri_grammar(const Actions & actions = Actions()):
+            actions(actions)
+        {}
+    };
+}}}
+
+== Semantic actions ==
+
+Semantic actions can participate in the parsing process or they can simply transmit parsed data to the rest of your application. Embedding the latter class of semantic actions in the grammar has the effect of coupling the grammar to the application--it is no longer a piece of generally reusable code.
 
 
 
