@@ -41,11 +41,53 @@ struct uri_grammar : public boost::spirit::grammar<uri_grammar<Actions> > {
 };
 }}}
 
+When everything is in a monolithic grammar capsule, rules you define are readily reusable anywhere within the grammar capsule. But once you start breaking things up, you find that parts of your grammar that need to be used in two or more of your new “subgrammars” also need to be factored out such that they can be used independently. This requirement yields the additional grammar capsules `uri_abs_path_grammar` and `uri_authority_grammar`, each of which gets used both in `uri_grammar` and `absolute_uri_grammar`.
+
 == Semantic actions ==
 
-Semantic actions can participate in the parsing process or they can simply transmit parsed data to the rest of your application. Embedding the latter class of semantic actions in the grammar has the effect of coupling the grammar to the application—it is no longer a piece of generally reusable code.
+Semantic actions can participate in the parsing process or they can simply transmit parsed data to the rest of your application. Embedding the latter class of semantic actions in the grammar has the effect of coupling the grammar to the application—it is no longer a piece of generally reusable code. So we need a way of allowing the user to specify these actions.
 
+The grammar capsules `uri_grammar`, `absolute_uri_grammar`, `uri_abs_path_grammar`, and `uri_authority_grammar` aren't actually classes; rather, they are _class templates_. The parameter for the template is something called `Actions`.
 
+=== The Actions concept ===
 
+Actions is a _concept_ (in the same sense that [http://www.sgi.com/tech/stl/BidirectionalIterator.html BidirectionalIterator] and [http://www.sgi.com/tech/stl/Sequence.html Sequence] are concepts in the C++ standard library; see “Concepts and Modeling” in the [http://www.sgi.com/tech/stl/stl_introduction.html Introduction to the Standard Template Library] documentation). This concept is _realized_ in a class you provide as a parameter to the `uri_grammar` (or `absolute_uri_grammar`) template.
+
+==== Refinement of ====
+[http://www.sgi.com/tech/stl/Assignable.html Assignable], [http://www.sgi.com/tech/stl/DefaultConstructible.html DefaultConstructible]
+
+==== Valid expressions ====
+For an object `a` that is an instance of a type that _models_ Actions, the following operations must be supported:
+
+|| *Name* || *Expression* || *Type requirements* || *Return type* ||
+|| scheme action || `a.scheme(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| scheme-specific part action || `a.scheme_specific_part(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| user info action || `a.user_info(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| host action || `a.host(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| port action || `a.port(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| authority action || `a.authority(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| path action || `a.path(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| query action || `a.query(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+|| fragment action || `a.fragment(first, last)` || `first` and `last` are [http://www.sgi.com/tech/stl/InputIterator.html InputIterator]s || `void` ||
+
+==== null_actions ===
+
+Concretely, `null_actions` represents a simplest-possible model of Actions:
+
+{{{
+class null_actions {
+public:
+    struct null_action {
+        template <typename Iterator>
+        void operator()(const Iterator &, const Iterator &) const
+        {}
+    };
+
+    null_action scheme, scheme_specific_part, userinfo, host, port,
+        authority, path, query, fragment;
+};
+}}}
+
+`null_actions` doesn't actually do anything; it is provided as a convenience so that users don't have to write one of these every time they just want to instantiate a `uri_grammar` without any semantic actions (typically for testing).
 
 
