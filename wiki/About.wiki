@@ -43,8 +43,7 @@ struct uri_grammar : public boost::spirit::grammar<uri_grammar<Actions> > {
 
 == Semantic actions ==
 
-Semantic actions can participate in the parsing process or they can simply transmit parsed data to the rest of your application. Embedding the latter class of semantic actions in the grammar has the effect of coupling the grammar to the application--it is no longer a piece of generally reusable code.
-
+Semantic actions can participate in the parsing process or they can simply transmit parsed data to the rest of your application. Embedding the latter class of semantic actions in the grammar has the effect of coupling the grammar to the application—it is no longer a piece of generally reusable code.
 
 
 
