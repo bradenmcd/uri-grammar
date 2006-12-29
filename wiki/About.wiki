@@ -25,32 +25,19 @@ struct uri_grammar : public boost::spirit::grammar<uri_grammar<Actions> > {
         rule_type uri_reference;
         absolute_uri_grammar<Actions> absolute_uri;
         rule_type relative_uri;
-        .
-        .
-        .
-
+        ⋮
         explicit definition(const uri_grammar & self):
-            .
-            .
-            .
+            ⋮
         {
-            .
-            .
-            .
+            ⋮
             uri_reference
                 =   !(absolute_uri | relative_uri) >> !('#' >> fragment)
                 ;
-            .
-            .
-            .
+            ⋮
         }
-        .
-        .
-        .
+        ⋮
     };
-    .
-    .
-    .
+    ⋮
 };
 }}}
 
