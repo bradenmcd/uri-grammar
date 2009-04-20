@@ -5,10 +5,12 @@ TESTS = uri-testsuite
 check_PROGRAMS = uri-testsuite parse-uri
 
 uri_testsuite_SOURCES = uri_testsuite.cpp
-uri_testsuite_LDADD = -lboost_unit_test_framework -lboost_thread
+uri_testsuite_LDADD = \
+        -lboost_unit_test_framework$(BOOST_LIB_SUFFIX) \
+        -lboost_thread$(BOOST_LIB_SUFFIX)
 
 parse_uri_SOURCES = parse_uri.cpp
-parse_uri_LDADD = -lboost_thread
+parse_uri_LDADD = -lboost_thread$(BOOST_LIB_SUFFIX)
 
 EXTRA_DIST = \
         package.m4 \
