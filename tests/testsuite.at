@@ -3,61 +3,61 @@ AT_INIT
 AT_BANNER([Test URI parser])
 
 AT_SETUP([Get the scheme])
-AT_CHECK([parse-uri --scheme http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --scheme http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [http
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the scheme-specific part])
-AT_CHECK([parse-uri --scheme-specific-part http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --scheme-specific-part http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [//user@example.com:80/foo/bar?attr=val
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the scheme-specific part])
-AT_CHECK([parse-uri --scheme-specific-part http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --scheme-specific-part http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [//user@example.com:80/foo/bar?attr=val
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the user information])
-AT_CHECK([parse-uri --userinfo http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --userinfo http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [user
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the host])
-AT_CHECK([parse-uri --host http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --host http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [example.com
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the port])
-AT_CHECK([parse-uri --port http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --port http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [80
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the authority])
-AT_CHECK([parse-uri --authority http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --authority http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [user@example.com:80
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the path])
-AT_CHECK([parse-uri --path http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --path http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [/foo/bar
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the query])
-AT_CHECK([parse-uri --query http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --query http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [attr=val
 ])
 AT_CLEANUP
 
 AT_SETUP([Get the fragment identifier])
-AT_CHECK([parse-uri --fragment http://user@example.com:80/foo/bar?attr=val#frag],
+AT_CHECK([parse-uri --fragment http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [frag
 ])
 AT_CLEANUP
