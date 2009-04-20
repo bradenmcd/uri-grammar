@@ -8,12 +8,15 @@
 // http://www.boost.org/LICENSE_1_0.txt
 //
 
+# define BOOST_TEST_MAIN
+# define BOOST_TEST_MODULE uri_grammar
+
 # include <boost/test/unit_test.hpp>
 # include <uri/grammar.hpp>
 
 using namespace uri;
 
-void basic()
+BOOST_AUTO_TEST_CASE(basic)
 {
     using boost::spirit::space_p;
 
@@ -22,20 +25,11 @@ void basic()
     BOOST_CHECK(parse(uri.begin(), uri.end(), g, space_p).full);
 }
 
-void absolute_uri()
+BOOST_AUTO_TEST_CASE(absolute_uri)
 {
     using boost::spirit::space_p;
 
     absolute_uri_grammar<> g;
     const std::string uri = "http://user@example.com:80/foo/bar?attr=val";
     BOOST_CHECK(parse(uri.begin(), uri.end(), g, space_p).full);
-}
-
-boost::unit_test::test_suite * init_unit_test_suite(int, char * [])
-{
-    using boost::unit_test::test_suite;
-    test_suite * const suite = BOOST_TEST_SUITE("uri_grammar");
-    suite->add(BOOST_TEST_CASE(&basic));
-    suite->add(BOOST_TEST_CASE(&absolute_uri));
-    return suite;
 }
