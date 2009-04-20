@@ -1,4 +1,4 @@
-AC_INIT([uri_grammar], [0.2], [braden@endoframe.com])
+AC_INIT([uri_grammar], [0.3], [braden@endoframe.com])
 AC_CONFIG_FILES([Makefile]
                 [src/Makefile]
                 [tests/Makefile]

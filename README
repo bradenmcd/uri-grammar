@@ -1,4 +1,4 @@
-uri_grammar version 0.2
+uri_grammar version 0.3
 
 Copyright 2009 Braden McDaniel <braden@endoframe.com>
 
@@ -11,7 +11,7 @@ About
 =====
 
    uri_grammar is a Spirit grammar for parsing URIs.  Spirit is a C++
-parser framework available at <http://spirit.sourceforge.net>.  Spirit
+parser framework available at <http://spirit.sourceforge.net>.  Spirithttp://uri-grammar.googlecode.com/svn/trunk/
 is part of the Boost suite of C++ libraries available at
 <http://boost.org>.
 
