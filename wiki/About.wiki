@@ -1,5 +1,5 @@
 #summary About uri_grammar
-#labels Phase-Deploy
+#labels Phase-Deploy,Featured
 
 = Introduction =
 
