@@ -10,7 +10,8 @@ AM_INIT_AUTOMAKE([foreign])
 #
 # Allow users to specify any Boost library name suffix
 #
-AC_ARG_VAR([BOOST_LIB_SUFFIX], [Boost library name suffix])
+AS_IF([test -z "${BOOST_LIB_SUFFIX+x}"], [BOOST_LIB_SUFFIX=-mt])
+AC_ARG_VAR([BOOST_LIB_SUFFIX], [Boost library name suffix [default=-mt]])
 
 AC_CACHE_CHECK([for boost_thread$BOOST_LIB_SUFFIX library],
 [ov_cv_boost_thread],
