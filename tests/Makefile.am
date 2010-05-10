@@ -3,14 +3,8 @@ AM_CPPFLAGS = \
         -DBOOST_SPIRIT_THREADSAFE \
         -DBOOST_TEST_DYN_LINK
 TESTS_ENVIRONMENT = BOOST_TEST_REPORT_LEVEL=detailed
-#TESTS = uri-testsuite
 
-check_PROGRAMS = uri-testsuite parse-uri
-
-uri_testsuite_SOURCES = uri_testsuite.cpp
-uri_testsuite_LDADD = \
-        -lboost_unit_test_framework$(BOOST_LIB_SUFFIX) \
-        -lboost_thread$(BOOST_LIB_SUFFIX)
+check_PROGRAMS = parse-uri
 
 parse_uri_SOURCES = parse_uri.cpp
 parse_uri_LDADD = -lboost_thread$(BOOST_LIB_SUFFIX)
