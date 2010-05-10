@@ -7,7 +7,9 @@ TESTS_ENVIRONMENT = BOOST_TEST_REPORT_LEVEL=detailed
 check_PROGRAMS = parse-uri
 
 parse_uri_SOURCES = parse_uri.cpp
-parse_uri_LDADD = -lboost_thread$(BOOST_LIB_SUFFIX)
+parse_uri_LDADD = \
+        -lboost_program_options$(BOOST_LIB_SUFFIX) \
+        -lboost_thread$(BOOST_LIB_SUFFIX)
 
 EXTRA_DIST = \
         package.m4 \
