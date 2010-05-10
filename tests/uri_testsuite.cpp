@@ -14,22 +14,40 @@
 # include <boost/test/unit_test.hpp>
 # include <uri/grammar.hpp>
 
-using namespace uri;
+using std::string;
 
 BOOST_AUTO_TEST_CASE(basic)
 {
-    using boost::spirit::space_p;
-
-    uri_grammar<> g;
-    const std::string uri = "http://user@example.com:80/foo/bar?attr=val#frag";
-    BOOST_CHECK(parse(uri.begin(), uri.end(), g, space_p).full);
+    const string uri = "http://user@example.com:80/foo/bar?attr=val#frag";
+    uri::components<string::const_iterator> c;
+    uri::grammar<string::const_iterator> g(c);
+    string::const_iterator pos = uri.begin();
+    BOOST_CHECK(parse(pos, uri.end(), g));
 }
 
 BOOST_AUTO_TEST_CASE(absolute_uri)
 {
-    using boost::spirit::space_p;
+    const string uri = "http://user@example.com:80/foo/bar?attr=val";
+    uri::components<string::const_iterator> c;
+    uri::grammar<string::const_iterator> g(c);
+    string::const_iterator pos = uri.begin();
+    BOOST_CHECK(parse(pos, uri.end(), g));
+}
 
-    absolute_uri_grammar<> g;
-    const std::string uri = "http://user@example.com:80/foo/bar?attr=val";
-    BOOST_CHECK(parse(uri.begin(), uri.end(), g, space_p).full);
+BOOST_AUTO_TEST_CASE(encoded_tilde)
+{
+    const string uri = "http://user@example.com:80/%7Euser/foo/bar?attr=val";
+    uri::components<string::const_iterator> c;
+    uri::grammar<string::const_iterator> g(c);
+    string::const_iterator pos = uri.begin();
+    BOOST_CHECK(parse(pos, uri.end(), g));
+}
+
+BOOST_AUTO_TEST_CASE(no_scheme)
+{
+    const string uri = "//user@example.com:80/foo/bar?attr=val#frag";
+    uri::components<string::const_iterator> c;
+    uri::grammar<string::const_iterator> g(c);
+    string::const_iterator pos = uri.begin();
+    BOOST_CHECK(parse(pos, uri.end(), g));
 }

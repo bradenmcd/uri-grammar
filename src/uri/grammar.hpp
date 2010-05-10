@@ -2,7 +2,7 @@
 //
 // uri_grammar
 //
-// Copyright 2009  Braden McDaniel
+// Copyright 2010  Braden McDaniel
 //
 // Distributed under the Boost Software License, Version 1.0.
 //
@@ -13,547 +13,380 @@
 # ifndef URI_GRAMMAR_HPP
 #   define URI_GRAMMAR_HPP
 
-#   include <boost/spirit.hpp>
-#   include <boost/spirit/phoenix.hpp>
+#   include <boost/spirit/include/qi.hpp>
+#   include <boost/spirit/include/phoenix.hpp>
 
 namespace uri {
 
-    template <typename SpiritActor, typename Iterator1, typename Iterator2>
-    class assign_iterators_base {
-        SpiritActor actor_;
-        Iterator1 begin_;
-        Iterator2 end_;
+    template <typename Iterator>
+    struct components {
+        boost::iterator_range<Iterator> scheme, userinfo, host, port, path, query, fragment;
+    };
 
-    public:
-        typedef assign_iterators_base<SpiritActor, Iterator1, Iterator2>
-            this_type;
 
-        assign_iterators_base(const SpiritActor & actor,
-                              const Iterator1 & begin,
-                              const Iterator2 & end):
-            actor_(actor),
-            begin_(begin),
-            end_(end)
-        {}
+    template <typename Iterator>
+    struct sub_delims_grammar :
+        boost::spirit::qi::grammar<Iterator, char()> {
 
-        template <typename T>
-        struct result {
-            typedef void type;
-        };
-
-        template <typename Tuple>
-        typename phoenix::actor_result<this_type, Tuple>::type
-        eval(Tuple) const
+        sub_delims_grammar(): sub_delims_grammar::base_type(sub_delims)
         {
-            this->actor_(this->begin_(), this->end_());
+            using namespace boost::spirit::qi;
+            sub_delims
+               %=   char_("!$&\\()*+,;=")
+                ;
         }
-    };
 
-    template <typename SpiritActor, typename Iterator1, typename Iterator2>
-    inline
-    phoenix::actor<assign_iterators_base<SpiritActor, Iterator1, Iterator2> >
-    assign_iterators(const SpiritActor & actor,
-                     const Iterator1 & begin,
-                     const Iterator2 & end)
-    {
-        return assign_iterators_base<SpiritActor, Iterator1, Iterator2>(actor,
-                                                                        begin,
-                                                                        end);
-    }
-
-
-    class null_actions {
-    public:
-        struct null_action {
-            template <typename Iterator>
-            void operator()(const Iterator &, const Iterator &) const
-            {}
-        };
-
-        null_action scheme, scheme_specific_part, userinfo, host, port,
-            authority, path, query, fragment;
+        boost::spirit::qi::rule<Iterator, char()> sub_delims;
     };
 
 
-    struct uri_reserved_parser :
-        public boost::spirit::char_parser<uri_reserved_parser> {
+    template <typename Iterator>
+    struct pct_encoded_grammar :
+        boost::spirit::qi::grammar<Iterator, std::string()> {
 
-        typedef uri_reserved_parser self_t;
-
-        template <typename CharT>
-        bool test(CharT ch) const
+        pct_encoded_grammar(): pct_encoded_grammar::base_type(pct_encoded)
         {
-            return ch == ';'
-                || ch == '/'
-                || ch == '?'
-                || ch == ':'
-                || ch == '@'
-                || ch == '&'
-                || ch == '='
-                || ch == '+'
-                || ch == '$'
-                || ch == ',';
+            using namespace boost::spirit::qi;
+            pct_encoded
+               %=   '%' >> xdigit >> xdigit
+                ;
         }
+
+        boost::spirit::qi::rule<Iterator, std::string()> pct_encoded;
     };
 
-    const uri_reserved_parser uri_reserved_p = uri_reserved_parser();
 
+    template <typename Iterator>
+    struct unreserved_grammar :
+        boost::spirit::qi::grammar<Iterator, char()> {
 
-    struct uri_unreserved_parser :
-        public boost::spirit::char_parser<uri_unreserved_parser> {
-
-        typedef uri_unreserved_parser self_t;
-
-        template <typename CharT>
-        bool test(CharT ch) const
+        unreserved_grammar(): unreserved_grammar::base_type(unreserved)
         {
-            using namespace std;
-            return isalnum(char_traits<CharT>::to_int_type(ch))
-                || ch == '-'
-                || ch == '_'
-                || ch == '.'
-                || ch == '!'
-                || ch == '~'
-                || ch == '*'
-                || ch == '\''
-                || ch == '('
-                || ch == ')';
+            using namespace boost::spirit::qi;
+
+            unreserved
+               %=   alnum
+                |   char_("-._~")
+                ;
         }
-    };
 
-    const uri_unreserved_parser uri_unreserved_p = uri_unreserved_parser();
-
-
-    struct uric_grammar :
-        public boost::spirit::grammar<uric_grammar> {
-
-        template <typename ScannerT>
-        struct definition {
-            typedef boost::spirit::rule<ScannerT> rule_type;
-
-            rule_type uric, escaped;
-
-            explicit definition(const uric_grammar & self)
-            {
-                using namespace boost::spirit;
-
-                uric
-                    =   uri_reserved_p
-                    |   uri_unreserved_p
-                    |   escaped
-                    ;
-
-                escaped
-                    =   '%' >> xdigit_p >> xdigit_p
-                    ;
-            }
-
-            const boost::spirit::rule<ScannerT> & start() const
-            {
-                return this->uric;
-            }
-        };
+        boost::spirit::qi::rule<Iterator, char()> unreserved;
     };
 
 
-    template <typename Actions = null_actions>
-    struct uri_authority_grammar :
-        public boost::spirit::grammar<uri_authority_grammar<Actions> > {
+    template <typename Iterator>
+    struct pchar_grammar : boost::spirit::qi::grammar<Iterator> {
+        pchar_grammar(): pchar_grammar::base_type(pchar)
+        {
+            using namespace boost::spirit::qi;
 
-        template <typename ScannerT>
-        struct definition {
-            struct server_closure :
-                boost::spirit::closure<server_closure,
-                                       typename ScannerT::iterator_t,
-                                       typename ScannerT::iterator_t> {
-                typename server_closure::member1 userinfo_begin;
-                typename server_closure::member2 userinfo_end;
-            };
+            pchar
+                =   unreserved
+                |   pct_encoded
+                |   sub_delims
+                |   char_(":@")
+                ;
+        }
 
-            typedef boost::spirit::rule<ScannerT> rule_type;
-            typedef boost::spirit::rule<ScannerT,
-                                        typename server_closure::context_t>
-                server_rule_type;
-
-            rule_type authority;
-            rule_type reg_name;
-            server_rule_type server;
-            rule_type userinfo;
-            rule_type hostport;
-            rule_type host;
-            rule_type hostname;
-            rule_type domainlabel;
-            rule_type toplabel;
-            rule_type ipv4address;
-            rule_type port;
-            rule_type escaped;
-
-            explicit definition(const uri_authority_grammar & self)
-            {
-                using namespace boost::spirit;
-                using namespace phoenix;
-
-                authority
-                    =   (server | reg_name)[ self.actions.authority ]
-                    ;
-
-                reg_name
-                    =  +(   uri_unreserved_p
-                        |   escaped
-                        |   '$'
-                        |   ','
-                        |   ';'
-                        |   ':'
-                        |   '@'
-                        |   '&'
-                        |   '='
-                        |   '+'
-                        )
-                    ;
-
-                server
-                    =  !(
-                           !(
-                                userinfo[
-                                    server.userinfo_begin = arg1,
-                                    server.userinfo_end = arg2
-                                ] >> '@'
-                            )[
-                                assign_iterators(self.actions.userinfo,
-                                                 server.userinfo_begin,
-                                                 server.userinfo_end)
-                            ]
-                            >> hostport
-                        )
-                    ;
-
-                userinfo
-                    =  *(   uri_unreserved_p
-                        |   escaped
-                        |   ';'
-                        |   ':'
-                        |   '&'
-                        |   '='
-                        |   '+'
-                        |   '$'
-                        |   ','
-                        )
-                    ;
-
-                hostport
-                    =   host >> !(':' >> port)
-                    ;
-
-                host
-                    =   (hostname | ipv4address)[ self.actions.host ]
-                    ;
-
-                hostname
-                    =   *(domainlabel >> '.') >> toplabel >> !ch_p('.')
-                    ;
-
-                domainlabel
-                    =   alnum_p >> *(*ch_p('-') >> alnum_p)
-                    ;
-
-                toplabel
-                    =   alpha_p >> *(*ch_p('-') >> alnum_p)
-                    ;
-
-                ipv4address
-                    =   +digit_p >> '.' >> +digit_p >> '.' >> +digit_p >> '.'
-                        >> +digit_p
-                    ;
-
-                port
-                    =   (*digit_p)[ self.actions.port ]
-                    ;
-
-                escaped
-                    =   '%' >> xdigit_p >> xdigit_p
-                    ;
-            }
-
-            const boost::spirit::rule<ScannerT> & start() const
-            {
-                return this->authority;
-            }
-        };
-
-        const Actions & actions;
-
-        explicit uri_authority_grammar(const Actions & actions = Actions()):
-            actions(actions)
-        {}
+        boost::spirit::qi::rule<Iterator> pchar;
+        sub_delims_grammar<Iterator> sub_delims;
+        pct_encoded_grammar<Iterator> pct_encoded;
+        unreserved_grammar<Iterator> unreserved;
     };
 
 
-    template <typename Actions>
-    struct uri_abs_path_grammar :
-        public boost::spirit::grammar<uri_abs_path_grammar<Actions> > {
+    template <typename Iterator>
+    struct authority_grammar : boost::spirit::qi::grammar<Iterator> {
+        explicit authority_grammar(components<Iterator> & c):
+            authority_grammar::base_type(authority),
+            components_(c)
+        {
+            using namespace boost::spirit::qi;
 
-        template <typename ScannerT>
-        struct definition {
-            typedef boost::spirit::rule<ScannerT> rule_type;
-
-            rule_type abs_path;
-            rule_type path_segments;
-            rule_type segment;
-            rule_type param;
-            rule_type pchar;
-            rule_type query;
-            rule_type escaped;
-
-            explicit definition(const uri_abs_path_grammar & self)
-            {
-                using namespace boost::spirit;
-                using namespace phoenix;
-
-                abs_path
-                    =   ('/' >> path_segments)[ self.actions.path ]
-                    ;
-
-                path_segments
-                    =   segment >> *('/' >> segment)
-                    ;
-
-                segment
-                    =   *pchar >> *(';' >> param)
-                    ;
-
-                param
-                    =   *pchar
-                    ;
-
-                pchar
-                    =   uri_unreserved_p
-                    |   escaped
+            userinfo
+                =  *(   unreserved
+                    |   pct_encoded
+                    |   sub_delims
                     |   ':'
+                    )
+                ;
+
+            ip_literal
+                =   '[' >> (ipv6address | ipvfuture) >> ']'
+                ;
+
+            ipvfuture
+                =   'v' >> +xdigit >> '.' >> +(unreserved | sub_delims | ':')
+                ;
+
+            ipv6address
+                =                                                 repeat(6)[h16 >> ':'] >> ls32
+                |                                         "::" >> repeat(5)[h16 >> ':'] >> ls32
+                |   -(                            h16) >> "::" >> repeat(4)[h16 >> ':'] >> ls32
+                |   -(repeat(0, 1)[h16 >> ':'] >> h16) >> "::" >> repeat(3)[h16 >> ':'] >> ls32
+                |   -(repeat(0, 2)[h16 >> ':'] >> h16) >> "::" >> repeat(2)[h16 >> ':'] >> ls32
+                |   -(repeat(0, 3)[h16 >> ':'] >> h16) >> "::" >>           h16 >> ':'  >> ls32
+                |   -(repeat(0, 4)[h16 >> ':'] >> h16) >> "::"                          >> ls32
+                |   -(repeat(0, 5)[h16 >> ':'] >> h16) >> "::" >>           h16
+                |   -(repeat(0, 6)[h16 >> ':'] >> h16) >> "::"
+                ;
+
+            h16
+                =   repeat(1, 4)[xdigit]
+                ;
+
+            ls32
+                =   h16 >> ':' >> h16
+                |   ipv4address
+                ;
+
+            ipv4address
+                =   dec_octet >> '.' >> dec_octet >> '.' >> dec_octet >> '.'
+                    >> dec_octet
+                ;
+
+            dec_octet
+                =   "25" >> char_("0-5")
+                |   '2' >> char_("0-4") >> digit
+                |   '1' >> repeat(2)[digit]
+                |   char_("1-9") >> digit
+                |   digit
+                ;
+
+            reg_name
+                =  *(   unreserved
+                    |   pct_encoded
+                    |   sub_delims
+                    )
+                ;
+
+            host
+                =   ip_literal
+                |   ipv4address
+                |   reg_name
+                ;
+
+            port
+                =   *digit
+                ;
+
+            authority
+                =   -(raw[userinfo][boost::phoenix::ref(components_.userinfo) = _1] >> '@')
+                    >> raw[host][boost::phoenix::ref(components_.host) = _1]
+                    >> -(':' >> raw[port][boost::phoenix::ref(components_.port) = _1])
+                ;
+
+            BOOST_SPIRIT_DEBUG_NODE(authority);
+            BOOST_SPIRIT_DEBUG_NODE(host);
+            BOOST_SPIRIT_DEBUG_NODE(ipv4address);
+            BOOST_SPIRIT_DEBUG_NODE(ipv6address);
+            BOOST_SPIRIT_DEBUG_NODE(dec_octet);
+            BOOST_SPIRIT_DEBUG_NODE(reg_name);
+            BOOST_SPIRIT_DEBUG_NODE(ipv6address);
+            BOOST_SPIRIT_DEBUG_NODE(ls32);
+            BOOST_SPIRIT_DEBUG_NODE(h16);
+        }
+
+        components<Iterator> & components_;
+
+        boost::spirit::qi::rule<Iterator> authority, ip_literal, ipv6address,
+            userinfo, host, port, reg_name, ipv4address, dec_octet, h16, ls32,
+            ipvfuture;
+        sub_delims_grammar<Iterator> sub_delims;
+        pct_encoded_grammar<Iterator> pct_encoded;
+        unreserved_grammar<Iterator> unreserved;
+    };
+
+
+    template <typename Iterator>
+    struct path_abempty_grammar : boost::spirit::qi::grammar<Iterator> {
+
+        path_abempty_grammar(): path_abempty_grammar::base_type(path_abempty)
+        {
+            using namespace boost::spirit::qi;
+            path_abempty
+                =   *('/' >> *pchar)
+                ;
+        }
+
+        boost::spirit::qi::rule<Iterator> path_abempty;
+        pchar_grammar<Iterator> pchar;
+    };
+
+
+    template <typename Iterator>
+    struct path_absolute_grammar : boost::spirit::qi::grammar<Iterator> {
+
+        path_absolute_grammar(): path_absolute_grammar::base_type(path_absolute)
+        {
+            using namespace boost::spirit::qi;
+            path_absolute
+                =   '/' >> -(+pchar >> *('/' >> *pchar))
+                ;
+        }
+
+        boost::spirit::qi::rule<Iterator> path_absolute;
+        pchar_grammar<Iterator> pchar;
+    };
+
+
+    template <typename Iterator>
+    struct query_grammar : boost::spirit::qi::grammar<Iterator> {
+        query_grammar(): query_grammar::base_type(query)
+        {
+            using namespace boost::spirit::qi;
+            query
+                =  *(pchar | char_("/?"))
+                ;
+        }
+
+        boost::spirit::qi::rule<Iterator> query;
+        pchar_grammar<Iterator> pchar;
+    };
+
+
+    template <typename Iterator>
+    struct fragment_grammar : boost::spirit::qi::grammar<Iterator> {
+
+        fragment_grammar(): fragment_grammar::base_type(fragment)
+        {
+            using namespace boost::spirit::qi;
+            fragment
+                =  *(pchar | char_("/?"))
+                ;
+        }
+
+        boost::spirit::qi::rule<Iterator> fragment;
+        pchar_grammar<Iterator> pchar;
+    };
+
+
+    template <typename Iterator>
+    struct relative_grammar : boost::spirit::qi::grammar<Iterator> {
+        explicit relative_grammar(components<Iterator> & c):
+            relative_grammar::base_type(relative_ref),
+            components_(c),
+            authority(c)
+        {
+            using namespace boost::spirit::qi;
+
+            segment_nz_nc
+                =  +(   unreserved 
+                    |   pct_encoded
+                    |   sub_delims
                     |   '@'
-                    |   '&'
-                    |   '='
-                    |   '+'
-                    |   '$'
-                    |   ','
-                    ;
+                    )
+                ;
 
-                escaped
-                    =   '%' >> xdigit_p >> xdigit_p
-                    ;
-            }
+            path_noscheme
+                =   segment_nz_nc >> *('/' >> *pchar)
+                ;
 
-            const boost::spirit::rule<ScannerT> & start() const
-            {
-                return this->abs_path;
-            }
-        };
+            path_empty
+                =   eps
+                ;
 
-        const Actions & actions;
+            relative_part
+                =   "//" >> authority >> raw[path_abempty][
+                        boost::phoenix::ref(components_.path) = _1
+                    ]
+                |   raw[(path_absolute | path_noscheme | path_empty)][
+                        boost::phoenix::ref(components_.path) = _1
+                    ]
+                ;
 
-        explicit uri_abs_path_grammar(const Actions & actions = Actions()):
-            actions(actions)
-        {}
+            relative_ref
+                =   relative_part
+                    >> -('?'
+                    >> raw[query][boost::phoenix::ref(components_.query) = _1])
+                    >> -('#'
+                    >> raw[fragment][boost::phoenix::ref(components_.fragment) = _1])
+                ;
+
+            BOOST_SPIRIT_DEBUG_NODE(relative_ref);
+            BOOST_SPIRIT_DEBUG_NODE(relative_part);
+        }
+
+        components<Iterator> & components_;
+
+        boost::spirit::qi::rule<Iterator> relative_ref, relative_part,
+            path_noscheme, path_empty, segment_nz_nc;
+        sub_delims_grammar<Iterator> sub_delims;
+        pct_encoded_grammar<Iterator> pct_encoded;
+        unreserved_grammar<Iterator> unreserved;
+        pchar_grammar<Iterator> pchar;
+        authority_grammar<Iterator> authority;
+        query_grammar<Iterator> query;
+        fragment_grammar<Iterator> fragment;
+        path_abempty_grammar<Iterator> path_abempty;
+        path_absolute_grammar<Iterator> path_absolute;
     };
 
 
-    template <typename Actions = null_actions>
-    struct absolute_uri_grammar :
-        public boost::spirit::grammar<absolute_uri_grammar<Actions> > {
+    template <typename Iterator>
+    struct grammar : boost::spirit::qi::grammar<Iterator> {
 
-        template <typename ScannerT>
-        struct definition {
-            struct absolute_uri_closure :
-                boost::spirit::closure<absolute_uri_closure,
-                                       typename ScannerT::iterator_t,
-                                       typename ScannerT::iterator_t> {
-                typename absolute_uri_closure::member1 scheme_begin;
-                typename absolute_uri_closure::member2 scheme_end;
-            };
+        explicit grammar(components<Iterator> & c):
+            grammar::base_type(uri_reference),
+            components_(c),
+            authority(c),
+            relative_ref(c)
+        {
+            using namespace boost::spirit::qi;
 
-            struct server_closure :
-                boost::spirit::closure<server_closure,
-                                       typename ScannerT::iterator_t,
-                                       typename ScannerT::iterator_t> {
-                typename server_closure::member1 userinfo_begin;
-                typename server_closure::member2 userinfo_end;
-            };
+            path_rootless
+                =   +pchar >> *('/' >> *pchar)
+                ;
 
-            typedef boost::spirit::rule<ScannerT> rule_type;
-            typedef boost::spirit::rule<
-                ScannerT,
-                typename absolute_uri_closure::context_t>
-                absolute_uri_rule_type;
-            typedef boost::spirit::rule<ScannerT,
-                                        typename server_closure::context_t>
-                server_rule_type;
+            path_empty
+                =   eps
+                ;
 
-            absolute_uri_rule_type absolute_uri;
-            rule_type scheme;
-            rule_type hier_part;
-            rule_type opaque_part;
-            rule_type net_path;
-            uri_abs_path_grammar<Actions> abs_path;
-            uri_authority_grammar<Actions> authority;
-            rule_type query;
-            rule_type uric_no_slash;
-            uric_grammar uric;
+            hier_part
+                =   "//" >> authority >> raw[path_abempty][
+                        boost::phoenix::ref(components_.path) = _1
+                    ]
+                |   raw[(path_absolute | path_rootless | path_empty)][
+                        boost::phoenix::ref(components_.path) = _1
+                    ]
+                ;
 
-            explicit definition(const absolute_uri_grammar & self):
-                abs_path(self.actions),
-                authority(self.actions)
-            {
-                using namespace boost::spirit;
-                using namespace phoenix;
+            scheme
+                =   alpha >> *(alnum | char_("+-."))
+                ;
 
-                absolute_uri
-                    =   (
-                            scheme[
-                                absolute_uri.scheme_begin = arg1,
-                                absolute_uri.scheme_end = arg2
-                            ] >> ':'
-                        )[
-                            assign_iterators(self.actions.scheme,
-                                             absolute_uri.scheme_begin,
-                                             absolute_uri.scheme_end)
-                        ] >> (hier_part | opaque_part)[
-                            self.actions.scheme_specific_part
-                        ]
-                    ;
+            uri
+                =   raw[scheme][boost::phoenix::ref(components_.scheme) = _1]
+                    >> ':' >> hier_part
+                    >> -('?'
+                    >> raw[query][boost::phoenix::ref(components_.query) = _1])
+                    >> -('#'
+                    >> raw[fragment][boost::phoenix::ref(components_.fragment) = _1])
+                ;
 
-                scheme
-                    =   (alpha_p >> *(alpha_p | digit_p | '+' | '-' | '.'))
-                    ;
+            uri_reference
+                =   uri
+                |   relative_ref
+                ;
 
-                hier_part
-                    =   (net_path | abs_path) >> !('?' >> query)
-                    ;
+            BOOST_SPIRIT_DEBUG_NODE(uri_reference);
+            BOOST_SPIRIT_DEBUG_NODE(uri);
+            BOOST_SPIRIT_DEBUG_NODE(hier_part);
+        }
 
-                opaque_part
-                    =   uric_no_slash >> *uric
-                    ;
+        typedef boost::spirit::qi::rule<Iterator> rule_t;
 
-                uric_no_slash
-                    =   uric - '/'
-                    ;
+        components<Iterator> & components_;
 
-                net_path
-                    =   "//" >> authority >> !abs_path
-                    ;
-
-                query
-                    =   (*uric)[ self.actions.query ]
-                    ;
-            }
-
-            const absolute_uri_rule_type & start() const
-            {
-                return this->absolute_uri;
-            }
-        };
-
-        const Actions & actions;
-
-        explicit absolute_uri_grammar(const Actions & actions = Actions()):
-            actions(actions)
-        {}
+        rule_t uri_reference, uri, hier_part, scheme, path_rootless, path_empty;
+        authority_grammar<Iterator> authority;
+        path_abempty_grammar<Iterator> path_abempty;
+        path_absolute_grammar<Iterator> path_absolute;
+        relative_grammar<Iterator> relative_ref;
+        query_grammar<Iterator> query;
+        fragment_grammar<Iterator> fragment;
+        pchar_grammar<Iterator> pchar;
     };
-
-
-    template <typename Actions = null_actions>
-    struct uri_grammar : public boost::spirit::grammar<uri_grammar<Actions> > {
-
-        template <typename ScannerT>
-        struct definition {
-            typedef boost::spirit::rule<ScannerT> rule_type;
-
-            rule_type uri_reference;
-            absolute_uri_grammar<Actions> absolute_uri;
-            rule_type relative_uri;
-            rule_type net_path;
-            uri_abs_path_grammar<Actions> abs_path;
-            rule_type rel_path;
-            rule_type rel_segment;
-            uri_authority_grammar<Actions> authority;
-            rule_type query;
-            rule_type fragment;
-            uric_grammar uric;
-            rule_type escaped;
-
-            explicit definition(const uri_grammar & self):
-                absolute_uri(self.actions),
-                abs_path(self.actions),
-                authority(self.actions)
-            {
-                using namespace boost::spirit;
-                using namespace phoenix;
-
-                BOOST_SPIRIT_DEBUG_NODE(uri_reference);
-                BOOST_SPIRIT_DEBUG_NODE(absolute_uri);
-                BOOST_SPIRIT_DEBUG_NODE(net_path);
-                BOOST_SPIRIT_DEBUG_NODE(abs_path);
-                BOOST_SPIRIT_DEBUG_NODE(rel_path);
-                BOOST_SPIRIT_DEBUG_NODE(rel_segment);
-                BOOST_SPIRIT_DEBUG_NODE(authority);
-                BOOST_SPIRIT_DEBUG_NODE(query);
-                BOOST_SPIRIT_DEBUG_NODE(fragment);
-                BOOST_SPIRIT_DEBUG_NODE(uric);
-                BOOST_SPIRIT_DEBUG_NODE(escaped);
-
-                uri_reference
-                    =   !(absolute_uri | relative_uri) >> !('#' >> fragment)
-                    ;
-
-                relative_uri
-                    =   (net_path | abs_path | rel_path) >> !('?' >> query)
-                    ;
-
-                net_path
-                    =   "//" >> authority >> !abs_path
-                    ;
-
-                rel_path
-                    =   (rel_segment >> !abs_path)[ self.actions.path ]
-                    ;
-
-                rel_segment
-                    =  +(   uri_unreserved_p
-                        |   escaped
-                        |   ';'
-                        |   '@'
-                        |   '&'
-                        |   '='
-                        |   '+'
-                        |   '$'
-                        |   ','
-                        )
-                    ;
-
-                query
-                    =   (*uric)[ self.actions.query ]
-                    ;
-
-                fragment
-                    =   (*uric)[ self.actions.fragment ]
-                    ;
-
-                escaped
-                    =   '%' >> xdigit_p >> xdigit_p
-                    ;
-            }
-
-            const boost::spirit::rule<ScannerT> & start() const
-            {
-                return this->uri_reference;
-            }
-        };
-
-        const Actions & actions;
-
-        explicit uri_grammar(const Actions & actions = Actions()):
-            actions(actions)
-        {}
-    };
-
 } // namespace uri
 
 # endif // ifndef URI_GRAMMAR_HPP

@@ -3,7 +3,7 @@ AM_CPPFLAGS = \
         -DBOOST_SPIRIT_THREADSAFE \
         -DBOOST_TEST_DYN_LINK
 TESTS_ENVIRONMENT = BOOST_TEST_REPORT_LEVEL=detailed
-TESTS = uri-testsuite
+#TESTS = uri-testsuite
 
 check_PROGRAMS = uri-testsuite parse-uri
 
