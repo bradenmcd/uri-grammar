@@ -96,6 +96,20 @@ namespace uri {
 
 
     template <typename Iterator>
+    struct scheme_grammar : boost::spirit::qi::grammar<Iterator> {
+        scheme_grammar(): scheme_grammar::base_type(scheme)
+        {
+            using namespace boost::spirit::qi;
+            scheme
+                =   alpha >> *(alnum | char_("+-."))
+                ;
+        }
+
+        boost::spirit::qi::rule<Iterator> scheme;
+    };
+
+
+    template <typename Iterator>
     struct authority_grammar : boost::spirit::qi::grammar<Iterator> {
         explicit authority_grammar(components<Iterator> & c):
             authority_grammar::base_type(authority),
@@ -231,6 +245,43 @@ namespace uri {
 
 
     template <typename Iterator>
+    struct hier_part_grammar : boost::spirit::qi::grammar<Iterator> {
+        explicit hier_part_grammar(components<Iterator> & c):
+            hier_part_grammar::base_type(hier_part),
+            components_(c),
+            authority(c)
+        {
+            using namespace boost::spirit::qi;
+
+            path_rootless
+                =   +pchar >> *('/' >> *pchar)
+                ;
+
+            path_empty
+                =   eps
+                ;
+
+            hier_part
+                =   "//" >> authority >> raw[path_abempty][
+                        boost::phoenix::ref(components_.path) = _1
+                    ]
+                |   raw[(path_absolute | path_rootless | path_empty)][
+                        boost::phoenix::ref(components_.path) = _1
+                    ]
+                ;
+        }
+
+        components<Iterator> & components_;
+
+        boost::spirit::qi::rule<Iterator> hier_part, path_rootless, path_empty;
+        authority_grammar<Iterator> authority;
+        path_abempty_grammar<Iterator> path_abempty;
+        path_absolute_grammar<Iterator> path_absolute;
+        pchar_grammar<Iterator> pchar;
+    };
+
+
+    template <typename Iterator>
     struct query_grammar : boost::spirit::qi::grammar<Iterator> {
         query_grammar(): query_grammar::base_type(query)
         {
@@ -329,39 +380,16 @@ namespace uri {
         explicit grammar(components<Iterator> & c):
             grammar::base_type(uri_reference),
             components_(c),
-            authority(c),
+            hier_part(c),
             relative_ref(c)
         {
             using namespace boost::spirit::qi;
 
-            path_rootless
-                =   +pchar >> *('/' >> *pchar)
-                ;
-
-            path_empty
-                =   eps
-                ;
-
-            hier_part
-                =   "//" >> authority >> raw[path_abempty][
-                        boost::phoenix::ref(components_.path) = _1
-                    ]
-                |   raw[(path_absolute | path_rootless | path_empty)][
-                        boost::phoenix::ref(components_.path) = _1
-                    ]
-                ;
-
-            scheme
-                =   alpha >> *(alnum | char_("+-."))
-                ;
-
             uri
                 =   raw[scheme][boost::phoenix::ref(components_.scheme) = _1]
                     >> ':' >> hier_part
-                    >> -('?'
-                    >> raw[query][boost::phoenix::ref(components_.query) = _1])
-                    >> -('#'
-                    >> raw[fragment][boost::phoenix::ref(components_.fragment) = _1])
+                    >> -('?' >> raw[query][boost::phoenix::ref(components_.query) = _1])
+                    >> -('#' >> raw[fragment][boost::phoenix::ref(components_.fragment) = _1])
                 ;
 
             uri_reference
@@ -378,14 +406,37 @@ namespace uri {
 
         components<Iterator> & components_;
 
-        rule_t uri_reference, uri, hier_part, scheme, path_rootless, path_empty;
-        authority_grammar<Iterator> authority;
-        path_abempty_grammar<Iterator> path_abempty;
-        path_absolute_grammar<Iterator> path_absolute;
+        rule_t uri_reference, uri;
+        scheme_grammar<Iterator> scheme;
+        hier_part_grammar<Iterator> hier_part;
         relative_grammar<Iterator> relative_ref;
         query_grammar<Iterator> query;
         fragment_grammar<Iterator> fragment;
-        pchar_grammar<Iterator> pchar;
+    };
+
+
+    template <typename Iterator>
+    struct absolute_grammar : boost::spirit::qi::grammar<Iterator> {
+
+        explicit absolute_grammar(components<Iterator> & c):
+            absolute_grammar::base_type(absolute_uri),
+            components_(c),
+            hier_part(c)
+        {
+            using namespace boost::spirit::qi;
+            absolute_uri
+                =   raw[scheme][boost::phoenix::ref(components_.fragment) = _1]
+                    >> ':' >> hier_part
+                    >> -('?' >> raw[query][boost::phoenix::ref(components_.fragment) = _1])
+                ;
+        }
+
+        components<Iterator> & components_;
+
+        boost::spirit::qi::rule<Iterator> absolute_uri;
+        scheme_grammar<Iterator> scheme;
+        hier_part_grammar<Iterator> hier_part;
+        query_grammar<Iterator> query;
     };
 } // namespace uri
 
