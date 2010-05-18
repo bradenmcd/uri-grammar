@@ -394,7 +394,7 @@ namespace uri {
 
             uri_reference
                 =   uri
-                |   relative_ref
+                |   raw[eps][boost::phoenix::ref(components_.scheme) = _1] >> relative_ref
                 ;
 
             BOOST_SPIRIT_DEBUG_NODE(uri_reference);
