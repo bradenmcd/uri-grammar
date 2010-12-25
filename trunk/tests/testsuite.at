@@ -14,6 +14,12 @@ AT_CHECK([parse-uri --userinfo http://user@example.com:80/foo/bar?attr=val@%:@fr
 ])
 AT_CLEANUP
 
+AT_SETUP([Get the user information (empty)])
+AT_CHECK([parse-uri --userinfo http://example.com:80/foo/bar?attr=val@%:@frag],
+         [0], [
+])
+AT_CLEANUP
+
 AT_SETUP([Get the host])
 AT_CHECK([parse-uri --host http://user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [example.com
@@ -61,6 +67,12 @@ AT_BANNER([Relative URIs])
 AT_SETUP([Get the user information])
 AT_CHECK([parse-uri --userinfo //user@example.com:80/foo/bar?attr=val@%:@frag],
          [0], [user
+])
+AT_CLEANUP
+
+AT_SETUP([Get the user information (empty)])
+AT_CHECK([parse-uri --userinfo //example.com:80/foo/bar?attr=val@%:@frag],
+         [0], [
 ])
 AT_CLEANUP
 
