@@ -185,7 +185,12 @@ namespace uri {
                 ;
 
             authority
-                =   -(raw[userinfo][boost::phoenix::ref(components_.userinfo) = _1] >> '@')
+                =  -(   raw[userinfo][boost::phoenix::ref(userinfo_temp_) = _1]
+                        >> '@'
+                    )[
+                        boost::phoenix::ref(components_.userinfo) =
+                            boost::phoenix::ref(userinfo_temp_)
+                    ]
                     >> raw[host][boost::phoenix::ref(components_.host) = _1]
                     >> -(':' >> raw[port][boost::phoenix::ref(components_.port) = _1])
                 ;
@@ -202,6 +207,7 @@ namespace uri {
         }
 
         components<Iterator> & components_;
+        boost::iterator_range<Iterator> userinfo_temp_;
 
         boost::spirit::qi::rule<Iterator> authority, ip_literal, ipv6address,
             userinfo, host, port, reg_name, ipv4address, dec_octet, h16, ls32,
