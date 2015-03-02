@@ -13,10 +13,95 @@
 # ifndef URI_GRAMMAR_HPP
 #   define URI_GRAMMAR_HPP
 
+#   include <boost/fusion/include/boost_array.hpp>
+#   include <boost/fusion/include/std_pair.hpp>
 #   include <boost/spirit/include/qi.hpp>
 #   include <boost/spirit/include/phoenix.hpp>
 
 namespace uri {
+
+    template <typename Iterator>
+    struct ipv4_grammar :
+        boost::spirit::qi::grammar<Iterator, std::uint32_t()> {
+
+        ipv4_grammar(): ipv4_grammar::base_type(ipv4address)
+        {
+            using boost::spirit::qi::eps;
+            using boost::spirit::qi::_1;
+            using boost::spirit::qi::_val;
+            using std::uint32_t;
+
+            ipv4address
+                =   eps[_val = 0]
+                    >> dec_octet[_val  = (_1 << 24)] >> '.'
+                    >> dec_octet[_val |= (_1 << 16)] >> '.'
+                    >> dec_octet[_val |= (_1 << 8) ] >> '.'
+                    >> dec_octet[_val |= _1]
+                ;
+
+            dec_octet
+                =   boost::spirit::qi::uint_parser<std::uint8_t, 10, 1, 3>()
+                ;
+        }
+
+        //
+        // dec_octet needs a uint32_t attribute so that bit shifting will work
+        // properly.
+        //
+        boost::spirit::qi::rule<Iterator, std::uint32_t()> ipv4address,
+            dec_octet;
+    };
+
+    template <typename Iterator>
+    struct ipv6_grammar :
+        boost::spirit::qi::grammar<Iterator, boost::spirit::qi::locals<unsigned>, boost::array<std::uint16_t, 8>()> {
+
+        ipv6_grammar(): ipv6_grammar::base_type(ipv6address)
+        {
+            using std::uint16_t;
+            using std::uint64_t;
+            using boost::array;
+            using boost::spirit::qi::eps;
+            using boost::spirit::qi::lit;
+            using boost::spirit::qi::repeat;
+            using boost::spirit::qi::_1;
+            using boost::spirit::qi::_a;
+            using boost::spirit::qi::_val;
+            using boost::phoenix::at_c;
+            using boost::phoenix::static_cast_;
+
+            ipv6address
+                =                                                                                                                                               repeat(6)[h16[_val[_a++]    = _1] >> ':'] >> ls32[at_c<6>(_val) = at_c<0>(_1), at_c<7>(_val) = at_c<1>(_1)]
+                |   eps[_val = array<uint16_t, 8>()        ]                                                                            >> lit("::")[_a = 1] >> repeat(5)[h16[_val[_a++]    = _1] >> ':'] >> ls32[at_c<6>(_val) = at_c<0>(_1), at_c<7>(_val) = at_c<1>(_1)]
+                |   eps[_val = array<uint16_t, 8>()        ] >> -(                                             h16[at_c<0>(_val) = _1]) >> lit("::")[_a = 2] >> repeat(4)[h16[_val[_a++]    = _1] >> ':'] >> ls32[at_c<6>(_val) = at_c<0>(_1), at_c<7>(_val) = at_c<1>(_1)]
+                |   eps[_val = array<uint16_t, 8>(), _a = 0] >> -(repeat(0, 1)[h16[_val[_a++] = _1] >> ':'] >> h16[_val[_a]      = _1]) >> lit("::")[_a = 3] >> repeat(3)[h16[_val[_a++]    = _1] >> ':'] >> ls32[at_c<6>(_val) = at_c<0>(_1), at_c<7>(_val) = at_c<1>(_1)]
+                |   eps[_val = array<uint16_t, 8>(), _a = 0] >> -(repeat(0, 2)[h16[_val[_a++] = _1] >> ':'] >> h16[_val[_a]      = _1]) >> lit("::")[_a = 4] >> repeat(2)[h16[_val[_a++]    = _1] >> ':'] >> ls32[at_c<6>(_val) = at_c<0>(_1), at_c<7>(_val) = at_c<1>(_1)]
+                |   eps[_val = array<uint16_t, 8>(), _a = 0] >> -(repeat(0, 3)[h16[_val[_a++] = _1] >> ':'] >> h16[_val[_a]      = _1]) >>     "::"          >>           h16[at_c<5>(_val) = _1] >> ':'  >> ls32[at_c<6>(_val) = at_c<0>(_1), at_c<7>(_val) = at_c<1>(_1)]
+                |   eps[_val = array<uint16_t, 8>(), _a = 0] >> -(repeat(0, 4)[h16[_val[_a++] = _1] >> ':'] >> h16[_val[_a]      = _1]) >>     "::"                                                       >> ls32[at_c<6>(_val) = at_c<0>(_1), at_c<7>(_val) = at_c<1>(_1)]
+                |   eps[_val = array<uint16_t, 8>(), _a = 0] >> -(repeat(0, 5)[h16[_val[_a++] = _1] >> ':'] >> h16[_val[_a]      = _1]) >>     "::"          >>           h16[at_c<7>(_val) = _1]
+                |   eps[_val = array<uint16_t, 8>(), _a = 0] >> -(repeat(0, 6)[h16[_val[_a++] = _1] >> ':'] >> h16[_val[_a]      = _1]) >>     "::"
+                ;
+
+            ls32
+                =   h16 >> ':' >> h16
+                |   ipv4address[at_c<0>(_val) = (_1 >> 16),
+                                at_c<1>(_val) = (0x0000ffff & _1)]
+                ;
+
+            BOOST_SPIRIT_DEBUG_NODES((ipv6address))
+        }
+
+        boost::spirit::qi::rule<Iterator,
+                                std::pair<std::uint64_t, std::uint64_t>()>
+            start;
+        boost::spirit::qi::rule<Iterator,
+                                boost::spirit::qi::locals<unsigned>,
+                                boost::array<std::uint16_t, 8>()>
+            ipv6address;
+        boost::spirit::qi::rule<Iterator, std::pair<std::uint16_t, std::uint16_t>()> ls32;
+        boost::spirit::qi::uint_parser<std::uint16_t, 16, 1, 4> h16;
+        ipv4_grammar<Iterator> ipv4address;
+    };
 
     template <typename Iterator>
     struct components {
